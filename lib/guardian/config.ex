@@ -18,6 +18,6 @@ defmodule Guardian.Config do
   * value - Returns other values as is
   """
   @spec resolve_value(value :: config_value) :: any
-  def resolve_value({m, f, a}) when is_atom(m) and is_atom(f), do: apply(m, f, a)
+  def resolve_value({m, f, a}) when is_atom(m) and is_atom(f), do: {m,f,a} # apply(m, f, a)
   def resolve_value(v), do: v
 end

@@ -134,19 +134,25 @@ defmodule Guardian.Permissions.Bitwise do
 
       raw_perms = @config_with_key.(:permissions)
 
-      unless raw_perms do
-        raise "Permissions are not defined for #{to_string(__MODULE__)}"
-      end
+      live_perms = @config_with_key.(:live_permissions)
 
-      @normalized_perms GBits.normalize_permissions(raw_perms)
-      @available_permissions GBits.available_from_normalized(@normalized_perms)
+      {m,f,a} = live_perms
+      @m m
+      @f f
+      @a a
+
+      def normalized_perms, do: normalize_permissions(apply(@m,@f,@a))
+
+      #@available_permissions GBits.@normalized_perms)
+
+      def available_permissions, do: available_from_normalized(normalized_perms())
 
       @doc """
       Lists all permissions in a normalized way using %{permission_set_name => [permission_name, ...]}
       """
 
       @spec available_permissions() :: GBits.t()
-      def available_permissions, do: @available_permissions
+      def available_permissions, do: available_from_normalized(normalized_perms())
 
       @doc """
       Decodes permissions from the permissions found in claims (encoded to integers) or
@@ -167,7 +173,7 @@ defmodule Guardian.Permissions.Bitwise do
       def decode_permissions(nil), do: %{}
 
       def decode_permissions(map) when is_map(map) do
-        for {k, v} <- map, Map.get(@normalized_perms, to_string(k)) != nil, into: %{} do
+        for {k, v} <- map, Map.get(normalized_perms(), to_string(k)) != nil, into: %{} do
           key = k |> to_string() |> String.to_atom()
           {key, do_decode_permissions(v, k)}
         end
@@ -279,7 +285,7 @@ defmodule Guardian.Permissions.Bitwise do
       end
 
       defp do_decode_permissions(value, type) when is_integer(value) do
-        perms = Map.get(@normalized_perms, type)
+        perms = Map.get(normalized_perms(), type)
 
         for {k, v} <- perms, band(value, v) == v, into: [] do
           k |> to_string() |> String.to_atom()
@@ -293,7 +299,7 @@ defmodule Guardian.Permissions.Bitwise do
 
       defp do_encode_permissions!(value, type) when is_list(value) do
         do_validate_permissions!({type, value})
-        perms = Map.get(@normalized_perms, type)
+        perms = Map.get(normalized_perms(), type)
         Enum.reduce(value, 0, &encode_value(&1, perms, &2))
       end
 
@@ -309,7 +315,7 @@ defmodule Guardian.Permissions.Bitwise do
       end
 
       defp do_validate_permissions!({type, list}) do
-        perm_set = Map.get(@normalized_perms, type)
+        perm_set = Map.get(normalized_perms(), type)
 
         if perm_set do
           provided_set = list |> Enum.map(&to_string/1) |> MapSet.new()
@@ -340,7 +346,7 @@ defmodule Guardian.Permissions.Bitwise do
   """
   def max, do: -1
 
-  @doc false
+ # @doc false
   def normalize_permissions(perms) do
     perms = Enum.into(perms, %{})
 
@@ -366,7 +372,7 @@ defmodule Guardian.Permissions.Bitwise do
     end
   end
 
-  @doc false
+#  @doc false
   def available_from_normalized(perms) do
     for {k, v} <- perms, into: %{} do
       list = v |> Map.keys() |> Enum.map(&String.to_atom/1)
