@@ -134,15 +134,37 @@ defmodule Guardian.Permissions.Bitwise do
 
       raw_perms = @config_with_key.(:permissions)
 
+      defp handle_permission_fetch({:error, reason}) do
+        {:stop, :error, "App permissions source is down! Auth can not continue :: #{inspect reason}"}
+      end
+
+      defp handle_permission_fetch(perms), do: perms
+
       case raw_perms do
         {m,f,a,t} -> 
           @m m
           @f f
           @a a
           @timeout t
-          #TODO use timeout
-          def normalized_perms, do: GBits.normalize_permissions(apply(@m,@f,@a))
+          defp permission_fetch do
+            x = Task.async(fn -> apply(@m,@f,@a) |> handle_permission_fetch end)
+            perms = Task.await(x, @timeout)
+            perms
+          end
+          def normalized_perms, do: GBits.normalize_permissions(permission_fetch)
           def available_permissions_, do: GBits.available_from_normalized(normalized_perms())
+
+        {m,f,a} ->
+          @m m
+          @f f
+          @a a
+          defp permission_fetch do
+            apply(@m, @f,@a) |> handle_permission_fetch
+          end
+
+          def normalized_perms, do: GBits.normalize_permissions(permission_fetch)
+          def available_permissions_, do: GBits.available_from_normalized(normalized_perms())
+
         raw_map ->
           @normalized_perms GBits.normalize_permissions(raw_map)
           @available_permissions GBits.available_from_normalized(@normalized_perms)
