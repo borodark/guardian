@@ -134,25 +134,29 @@ defmodule Guardian.Permissions.Bitwise do
 
       raw_perms = @config_with_key.(:permissions)
 
-      live_perms = @config_with_key.(:live_permissions)
+      case raw_perms do
+        {m,f,a,t} -> 
+          @m m
+          @f f
+          @a a
+          @timeout t
+          #TODO use timeout
+          def normalized_perms, do: GBits.normalize_permissions(apply(@m,@f,@a))
+          def available_permissions_, do: GBits.available_from_normalized(normalized_perms())
+        raw_map ->
+          @normalized_perms GBits.normalize_permissions(raw_map)
+          @available_permissions GBits.available_from_normalized(@normalized_perms)
+          def normalized_perms, do: @normalized_perms
+          def available_permissions_, do: @available_permissions
+      end
 
-      {m,f,a} = live_perms
-      @m m
-      @f f
-      @a a
-
-      def normalized_perms, do: normalize_permissions(apply(@m,@f,@a))
-
-      #@available_permissions GBits.@normalized_perms)
-
-      def available_permissions, do: available_from_normalized(normalized_perms())
 
       @doc """
       Lists all permissions in a normalized way using %{permission_set_name => [permission_name, ...]}
       """
 
       @spec available_permissions() :: GBits.t()
-      def available_permissions, do: available_from_normalized(normalized_perms())
+      def available_permissions, do: available_permissions_()
 
       @doc """
       Decodes permissions from the permissions found in claims (encoded to integers) or
