@@ -161,7 +161,7 @@ defmodule Guardian.Permissions.Bitwise do
             apply(@m, @f,@a) |> handle_permission_fetch
           end
 
-          def normalized_perms, do: GBits.normalize_permissions(permission_fetch)
+          def normalized_perms, do: GBits.normalize_permissions(permission_fetch())
           def available_permissions_, do: GBits.available_from_normalized(normalized_perms())
 
         raw_map ->
