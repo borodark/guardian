@@ -149,7 +149,7 @@ defmodule Guardian.Permissions.Bitwise do
           @f f
           @a a
           @timeout t
-          defp permission_fetch do
+          defp permission_fetch() do
             x = Task.async(fn -> apply(@m, @f, @a) |> handle_permission_fetch end)
             Task.await(x, @timeout)
           end
@@ -161,7 +161,7 @@ defmodule Guardian.Permissions.Bitwise do
           @m m
           @f f
           @a a
-          defp permission_fetch do
+          defp permission_fetch() do
             apply(@m, @f, @a) |> handle_permission_fetch
           end
 
