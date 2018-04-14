@@ -135,30 +135,32 @@ defmodule Guardian.Permissions.Bitwise do
       raw_perms = @config_with_key.(:permissions)
 
       defp handle_permission_fetch({:error, reason}) do
-        {:stop, :error, "App permissions source is down! Auth can not continue :: #{inspect reason}"}
+        {:stop, :error,
+         "App permissions source is down! Auth can not continue :: #{inspect(reason)}"}
       end
 
       defp handle_permission_fetch(perms), do: perms
 
       case raw_perms do
-        {m,f,a,t} -> 
+        {m, f, a, t} ->
           @m m
           @f f
           @a a
           @timeout t
           defp permission_fetch do
-            x = Task.async(fn -> apply(@m,@f,@a) |> handle_permission_fetch end)
+            x = Task.async(fn -> apply(@m, @f, @a) |> handle_permission_fetch end)
             Task.await(x, @timeout)
           end
+
           def normalized_perms, do: GBits.normalize_permissions(permission_fetch())
           def available_permissions_, do: GBits.available_from_normalized(normalized_perms())
 
-        {m,f,a} ->
+        {m, f, a} ->
           @m m
           @f f
           @a a
           defp permission_fetch do
-            apply(@m, @f,@a) |> handle_permission_fetch
+            apply(@m, @f, @a) |> handle_permission_fetch
           end
 
           def normalized_perms, do: GBits.normalize_permissions(permission_fetch())
@@ -170,7 +172,6 @@ defmodule Guardian.Permissions.Bitwise do
           def normalized_perms, do: @normalized_perms
           def available_permissions_, do: @available_permissions
       end
-
 
       @doc """
       Lists all permissions in a normalized way using %{permission_set_name => [permission_name, ...]}
@@ -371,7 +372,7 @@ defmodule Guardian.Permissions.Bitwise do
   """
   def max, do: -1
 
- # @doc false
+  # @doc false
   def normalize_permissions(perms) do
     perms = Enum.into(perms, %{})
 
@@ -397,7 +398,7 @@ defmodule Guardian.Permissions.Bitwise do
     end
   end
 
-#  @doc false
+  #  @doc false
   def available_from_normalized(perms) do
     for {k, v} <- perms, into: %{} do
       list = v |> Map.keys() |> Enum.map(&String.to_atom/1)
@@ -414,7 +415,7 @@ defmodule Guardian.Permissions.Bitwise do
       alias GPlug.Pipeline
 
       @doc false
-      @spec init([GBits.plug_option]) :: [GBits.plug_option]
+      @spec init([GBits.plug_option()]) :: [GBits.plug_option()]
       def init(opts) do
         ensure = Keyword.get(opts, :ensure)
         one_of = Keyword.get(opts, :one_of)
@@ -437,7 +438,7 @@ defmodule Guardian.Permissions.Bitwise do
       end
 
       @doc false
-      @spec call(Plug.Conn.t(), [GBits.plug_option]) :: Plug.Conn.t()
+      @spec call(Plug.Conn.t(), [GBits.plug_option()]) :: Plug.Conn.t()
       def call(conn, opts) do
         context = %{
           claims: GPlug.current_claims(conn, opts),
