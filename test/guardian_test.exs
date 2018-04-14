@@ -287,6 +287,13 @@ defmodule GuardianTest do
       assert {:ok, ^resource, ^claims} =
                Guardian.resource_from_token(ctx.impl, ctx.token, %{}, [])
     end
+
+    test "it returns an error when token can't be decoded", ctx do
+      invalid_token = -1
+
+      assert {:error, :invalid_token} =
+               Guardian.resource_from_token(ctx.impl, invalid_token, %{}, [])
+    end
   end
 
   describe "revoke" do

@@ -1,5 +1,4 @@
-Guardian
-========
+# Guardian
 
 > An authentication library for use with Elixir applications.
 
@@ -30,6 +29,10 @@ You can use Guardian tokens to authenticate:
 Tokens should be able to contain any assertions (claims) that a developer wants to make and may contain both standard and application specific information encoded within them.
 
 Guardian also allows you to configure multiple token types/configurations in a single application.
+
+## Documentation
+
+API documentation is available at [https://hexdocs.pm/guardian](https://hexdocs.pm/guardian)
 
 ## Installation
 
@@ -117,6 +120,9 @@ With Plug
 # If no session is loaded, the token/resource/claims only go onto the connection
 conn = MyApp.Guardian.Plug.sign_in(conn, resource)
 
+# Optionally with claims and options
+conn = MyApp.Guardian.Plug.sign_in(conn, resource, %{some: "claim"}, ttl: {1, :minute})
+
 # remove from session (if fetched) and revoke the token
 conn = MyApp.Guardian.Plug.sign_out(conn)
 
@@ -140,7 +146,7 @@ Creating with custom claims and options
 {:ok, token, claims} = MyApp.Guardian.encode_and_sign(resource, %{}, token_type: "refresh")
 
 # Customize the time to live (ttl) of the token
-{:ok, token, claims} = MyApp.Guardian.encode_and_sign(resource, %{}, token_ttl: {1, :minute})
+{:ok, token, claims} = MyApp.Guardian.encode_and_sign(resource, %{}, ttl: {1, :minute})
 
 # Customize the secret
 {:ok, token, claims} = MyApp.Guardian.encode_and_sign(resource, %{}, secret: "custom")
@@ -158,6 +164,8 @@ Decoding tokens
 {:ok, claims} = MyApp.Guardian.decode_and_verify(token, %{}, secret: {SomeMod, :some_func, ["some", "args"]})
 ```
 
+If you need dynamic verification for JWT tokens, please see the documentation for `Guardian.Token.Jwt` and `Guardian.Token.Jwt.SecretFetcher`
+
 ## Configuration
 
 The following configuration is available to all implementation modules.
@@ -170,7 +178,7 @@ Each token module will have its own configuration requirements. Please see below
 All configuration values may be provided in two ways.
 
 1. In your config files
-2. As a Keyword list to your call to `use Guardian` in you implementation module.
+2. As a Keyword list to your call to `use Guardian` in your implementation module.
 
 Any options given to `use Guardian` have precedence over config values found in the config files.
 
@@ -196,17 +204,19 @@ The default token type of `Guardian` is JWT. It accepts many options but you rea
 
 * `issuer` - The issuer of the token. Your application name/id
 * `secret_key` - The secret key to use for the implementation module.
-                 This may be any resolvable value for `Guardian.Config`
+  This may be any resolvable value for `Guardian.Config`
 
 #### Optional configuration (JWT)
 
 * `token_verify_module` - default `Guardian.Token.Jwt.Verify`. The module that verifies the claims
 * `allowed_algos` - The allowed algos to use for encoding and decoding.
-                    See `JOSE` for available. Default `["HS512"]`
+  See `JOSE` for available. Default `["HS512"]`
 * `ttl` - The default time to live for all tokens. See the type in Guardian.ttl
 * `token_ttl` a map of `token_type` to `ttl`. Set specific ttls for specific types of tokens
 * `allowed_drift` The drift that is allowed when decoding/verifying a token in milliseconds
 * `verify_issuer` Default false
+* `secret_fetcher` A module used to fetch the secret. Default: `Guardian.Token.Jwt.SecretFetcher`
+
 
 ## Secrets (JWT)
 
@@ -271,21 +281,27 @@ claims = MyApp.Guardian.Plug.current_claims(conn, key: :impersonate)
 ### Plugs out of the box
 
 #### `Guardian.Plug.VerifyHeader`
+
 Look for a token in the header and verify it
 
 #### `Guardian.Plug.VerifySession`
+
 Look for a token in the session and verify it
 
 #### `Guardian.Plug.VerifyCookie`
+
 Look for a token in cookies and exchange it for an access token
 
 #### `Guardian.Plug.EnsureAuthenticated`
+
 Make sure that a token was found and is valid
 
 #### `Guardian.Plug.EnsureNotAuthenticated`
+
 Make sure no one is logged in
 
 #### `Guardian.Plug.LoadResource`
+
 If a token was found, load the resource for it
 
 See the documentation for each Plug for more information.
@@ -386,6 +402,30 @@ If you need to track and revoke individual tokens, you may need to use something
 This will record each token issued in your database, confirm it is still valid on each access and then finally when you `revoke` (called on sign_out or manually) invalidate the token.
 
 For more in-depth documentation please see the [GuardianDb README](https://github.com/ueberauth/guardian_db/blob/master/README.md)
+
+## Best testing practices
+
+### How to add the token to a request (the Phoenix way)
+
+```elixir
+defmodule HelloWeb.AuthControllerTest do
+  use HelloWeb.ConnCase
+  import HelloWeb.Guardian
+
+ test "GET /auth/me", %{conn: conn} do
+    user = insert(:user) # See https://github.com/thoughtbot/ex_machina
+
+    {:ok, token, _} = encode_and_sign(user, %{}, token_type: :access)
+
+    conn = conn
+    |> put_req_header("authorization", "bearer: " <> token)
+    |> get(auth_path(conn, :me))
+
+    # Assert things here
+  end
+
+end
+```
 
 ## Related projects
 

@@ -4,6 +4,29 @@ defmodule Guardian.Support.TokenModule do
   """
   @behaviour Guardian.Token
 
+  defmodule SecretFetcher do
+    alias Guardian.Token.Jwt.SecretFetcher.SecretFetcherDefaultImpl, as: DI
+
+    def fetch_signing_secret(mod, opts) do
+      if Keyword.has_key?(opts, :fetched_secret) do
+        val = Keyword.get(opts, :fetched_secret)
+        {:ok, val}
+      else
+        DI.fetch_signing_secret(mod, opts)
+      end
+    end
+
+    def fetch_verifying_secret(mod, headers, opts) do
+      if Keyword.has_key?(opts, :fetched_secret) do
+        val = Keyword.get(opts, :fetched_secret)
+        send(self(), {:secret_fetcher, headers})
+        {:ok, val}
+      else
+        DI.fetch_verifying_secret(mod, headers, opts)
+      end
+    end
+  end
+
   import Guardian.Support.Utils, only: [send_function_call: 1]
 
   def token_id do
@@ -114,7 +137,12 @@ defmodule Guardian.Support.TokenModule do
     else
       {:ok, old_claims} = decode_token(mod, old_token, opts)
       new_c = Map.put(old_claims, "typ", to_type)
-      new_t = Poison.encode!(%{"claims" => new_c})
+
+      new_t =
+        %{"claims" => new_c}
+        |> Poison.encode!()
+        |> Base.url_encode64(padding: true)
+
       {:ok, {old_token, old_claims}, {new_t, new_c}}
     end
   end
