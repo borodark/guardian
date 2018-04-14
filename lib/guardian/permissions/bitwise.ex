@@ -134,6 +134,8 @@ defmodule Guardian.Permissions.Bitwise do
 
       raw_perms = @config_with_key.(:permissions)
 
+      unless raw_perms, do: raise "Permissions are not defined for #{to_string(__MODULE__)}"
+
       defp handle_permission_fetch({:error, reason}) do
         {:stop, :error,
          "App permissions source is down! Auth can not continue :: #{inspect(reason)}"}
